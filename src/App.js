@@ -36,27 +36,34 @@ export default function App() {
 
   // when timer ends
   function onTimerFinish() {
-    // reward logic
-    const src = CATS[Math.floor(Math.random() * CATS.length)];
-    setReward({ type: "cat", src });
-    if (!catUnlocked.includes(src)) setCatUnlocked([...catUnlocked, src]);
+  // reward logic...
+  const a = audioRef.current;
+  if (!a || muted) return;
 
-    // play sound
-    const a = audioRef.current;
-    if (a && !muted) {
-      try {
-        a.currentTime = 0;
-        const p = a.play();
-        if (p && typeof p.catch === "function") {
-          p.catch(() => {
-            /* ignore autoplay block */
-          });
-        }
-      } catch {
-        /* ignore */
-      }
+  let count = 0;
+  const maxRepeats = 5; // how many times to repeat
+
+  // remove old listeners first
+  a.onended = null;
+
+  // define play cycle
+  const playCycle = () => {
+    if (count < maxRepeats) {
+      a.currentTime = 0;
+      a.play().catch(() => {});
+      count++;
+    } else {
+      a.onended = null; // cleanup
     }
-  }
+  };
+
+  // hook up ended → play again
+  a.onended = playCycle;
+
+  // start first play
+  playCycle();
+}
+
 
   return (
     <div
