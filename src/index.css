@@ -1,13 +1,42 @@
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+:root{
+  --peach:#F9D5D3; --lav:#D7C4F3; --mint:#e6dafd; --blue:#b5e0f3; --butter:#FFF6C3; --coral:#FFB6B9; --cocoa:#5C4A72;
+  /* darker accents for contrast */
+  --plum:#A06386;          /* headings / borders */
+  --mint-600:#8ED5B5;      /* stronger mint */
+  --blue-600:#cbd0ff;      /* stronger blue */
+}
+*{box-sizing:border-box}
+html, body, #root {margin: 0; height: 100%; overflow: hidden}
+body{margin:0; color:var(--cocoa); font-family:"Pixelify Sans", system-ui, sans-serif;}
+.pixel{font-family:"Press Start 2P", monospace;}
+.card{
+  background: color-mix(in oklab, var(--peach) 70%, white);
+  border:2px solid #b77; border-radius:20px; padding:16px;
+  box-shadow:0 0 0 2px #c88, 4px 4px 0 0 #b77;
+}
+.btn{
+  border:2px solid #b77; border-radius:12px; padding:10px 14px; cursor:pointer;
+  background: var(--lav);
+}
+.btn:hover{filter:brightness(1.05)}
+.grid{display:grid; gap:12px}
+.btn {
+  background: var(--mint);
+  border: 3px solid #b77;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  box-shadow: 2px 2px 0px #b77;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+.btn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0px #b77;
+}
+
+.btn:active {
+  transform: translate(0px, 0px);
+  box-shadow: 1px 1px 0px #b77;
 }
