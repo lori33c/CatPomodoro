@@ -1,18 +1,72 @@
 // App.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import "./index.css";
 import Timer from "./components/Timer";
 
-const FALLBACK_CATS = ["/cats/Xivu1.jpg", "/cats/Dio1.jpg"]; // local fallback
+const FALLBACK_CATS = ["/cats/Xivu1.jpg", "/cats/Dio1.jpg"];
+const CATS = FALLBACK_CATS; // swap this with your API list if you want
+
+// LocalStorage hook (if you don't already have one defined elsewhere)
+function useLocal(key, initial) {
+  const [v, setV] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(key)) ?? initial;
+    } catch {
+      return initial;
+    }
+  });
+  useEffect(() => localStorage.setItem(key, JSON.stringify(v)), [key, v]);
+  return [v, setV];
+}
 
 export default function App() {
+  const [reward, setReward] = useState(null);
+  const [foodUnlocked, setFoodUnlocked] = useLocal("sf_food", []);
+  const [catUnlocked, setCatUnlocked] = useLocal("sf_cats", []);
+  const audioRef = useRef(null);
+  const [muted, setMuted] = useState(false);
+
+  // preload audio once
+  useEffect(() => {
+    const a = new Audio("/sounds/done.mp3"); // file in public/sounds/
+    a.preload = "auto";
+    a.volume = 0.9;
+    audioRef.current = a;
+  }, []);
+
+  // when timer ends
   function onTimerFinish() {
-    // keep your reward logic here later if you want
+    // reward logic
+    const src = CATS[Math.floor(Math.random() * CATS.length)];
+    setReward({ type: "cat", src });
+    if (!catUnlocked.includes(src)) setCatUnlocked([...catUnlocked, src]);
+
+    // play sound
+    const a = audioRef.current;
+    if (a && !muted) {
+      try {
+        a.currentTime = 0;
+        const p = a.play();
+        if (p && typeof p.catch === "function") {
+          p.catch(() => {
+            /* ignore autoplay block */
+          });
+        }
+      } catch {
+        /* ignore */
+      }
+    }
   }
 
   return (
-    <div style={{ minHeight: "100dvh", display: "grid", placeItems: "center", padding: 36 }}>
-      {/* Outer 2-column grid */}
+    <div
+      style={{
+        minHeight: "100dvh",
+        display: "grid",
+        placeItems: "center",
+        padding: 36,
+      }}
+    >
       <div
         className="grid"
         style={{
@@ -23,10 +77,15 @@ export default function App() {
           alignItems: "stretch",
         }}
       >
-        {/* LEFT: Tall timer window fills entire column */}
+        {/* LEFT: Timer */}
         <div
           className="card"
-          style={{ border: "2px solid #b77", borderRadius: 16, overflow: "auto", height: "70%" }}
+          style={{
+            border: "2px solid #b77",
+            borderRadius: 16,
+            overflow: "auto",
+            height: "70%",
+          }}
         >
           <div
             style={{
@@ -37,35 +96,70 @@ export default function App() {
               alignItems: "center",
             }}
           >
-            <h1 className="pixel" style={{ fontSize: 20 }}>Stay_Focused.exe</h1>
+            <h1 className="pixel" style={{ fontSize: 20 }}>
+              Stay_Focused.exe
+            </h1>
+
+            {/* mute toggle */}
+            <button
+              className="btn pixel"
+              onClick={() => setMuted((m) => !m)}
+              style={{
+                padding: "6px 10px",
+                fontSize: 12,
+                background: muted ? "var(--mint)" : "var(--blue)",
+                color: muted ? "black" : "white",
+              }}
+              aria-pressed={muted}
+              title={muted ? "Unmute" : "Mute"}
+            >
+              {muted ? "🔇 Mute" : "🔔 Sound"}
+            </button>
           </div>
           <div style={{ padding: 16 }}>
-            <p style={{ fontSize: 24, margin: "8px 0 12px", textAlign: "center" }}>
-              Start the timer to make sure Xivu and Dio get fed! 
-              AHHHHH!
+            <p
+              style={{
+                fontSize: 24,
+                margin: "8px 0 12px",
+                textAlign: "center",
+              }}
+            >
+              Start the timer to make sure Xivu and Dio get fed! AHHHHH!
             </p>
             <Timer onFinish={onTimerFinish} />
           </div>
         </div>
 
-        {/* RIGHT COLUMN: split vertically into two equal rows (each ~50%) */}
+        {/* RIGHT: Cat viewer + placeholder */}
         <div style={{ display: "grid", gridTemplateRows: "1fr 1fr", gap: 16 }}>
-          {/* Top: Cats preview with side buttons */}
           <div
             className="card"
-            style={{ border: "2px solid #b77", borderRadius: 16, overflow: "hidden", position: "relative" }}
+            style={{
+              border: "2px solid #b77",
+              borderRadius: 16,
+              overflow: "hidden",
+              position: "relative",
+            }}
           >
             <div style={{ borderBottom: "2px solid #b77", padding: "10px 12px" }}>
-              <h2 className="pixel" style={{ fontSize: 18 }}>Cats.png</h2>
+              <h2 className="pixel" style={{ fontSize: 18 }}>
+                Cats.png
+              </h2>
             </div>
-            <div style={{ padding: 12, height: "calc(100% - 40px)", display: "flex", flexDirection: "column" }}>
+            <div
+              style={{
+                padding: 12,
+                height: "calc(100% - 40px)",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
               <CatViewer fallbackList={FALLBACK_CATS} />
             </div>
           </div>
 
-          {/* Bottom: placeholder (add anything later) */}
-          <div>
-          </div>
+          {/* bottom placeholder */}
+          <div></div>
         </div>
       </div>
     </div>
@@ -77,23 +171,25 @@ function CatViewer({ fallbackList = [] }) {
   const [cats, setCats] = useState(fallbackList);
   const [idx, setIdx] = useState(0);
 
-  // Try loading from your API; if it fails, fall back to local list
+  // load from API or fallback
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
         const res = await fetch("/api/cats");
         if (!res.ok) throw new Error("bad status");
-        const data = await res.json(); // expect: ["url1","url2", ...]
+        const data = await res.json();
         if (Array.isArray(data) && data.length && alive) {
           setCats(data);
           setIdx(0);
         }
       } catch {
-        // ignore, stay on fallback
+        // ignore
       }
     })();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const hasCats = cats.length > 0;
@@ -108,7 +204,7 @@ function CatViewer({ fallbackList = [] }) {
     setIdx((i) => (i - 1 + cats.length) % cats.length);
   }
 
-  // keyboard arrows
+  // keyboard arrow support
   useEffect(() => {
     function onKey(e) {
       if (e.key === "ArrowRight") next();
@@ -119,7 +215,14 @@ function CatViewer({ fallbackList = [] }) {
   }, [cats]);
 
   return (
-    <div style={{ position: "relative", width: "100%", flex: "1 1 auto", marginBottom: 16 }}>
+    <div
+      style={{
+        position: "relative",
+        width: "100%",
+        flex: "1 1 auto",
+        marginBottom: 16,
+      }}
+    >
       {/* Image */}
       <img
         src={current ?? ""}
@@ -151,25 +254,15 @@ function CatViewer({ fallbackList = [] }) {
         </div>
       )}
 
-      {/* Left button */}
-      <button
-        onClick={prev}
-        aria-label="Previous cat"
-        style={navBtnStyle("left")}
-      >
+      {/* Nav buttons */}
+      <button onClick={prev} aria-label="Previous cat" style={navBtnStyle("left")}>
         ◀
       </button>
-
-      {/* Right button */}
-      <button
-        onClick={next}
-        aria-label="Next cat"
-        style={navBtnStyle("right")}
-      >
+      <button onClick={next} aria-label="Next cat" style={navBtnStyle("right")}>
         ▶
       </button>
 
-      {/* Counter pill */}
+      {/* Counter */}
       {hasCats && (
         <div
           className="pixel"
